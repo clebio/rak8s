@@ -1,0 +1,47 @@
+
+- name: Remove aufs-dkms and dkms
+  apt:
+    name: [aufs-dkms, dkms]
+    state: absent
+
+- name: Add Docker repo key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+- name: Get dpkg arch
+  command: dpkg --print-architecture
+  register: dpkg_arch
+
+- name: Add Docker repo
+  apt_repository:
+    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/raspbian {{ docker_dist }} {{docker_channel}}
+    filename: docker
+    state: present
+    update_cache: true
+
+- name: Unpin Docker
+  command: apt-mark unhold docker-ce
+
+- name: Install Docker
+  apt:
+    name: "docker-ce={{ docker_ce_version }}"
+    state: present
+    update_cache: true
+    # https://github.com/docker/for-linux/issues/709
+    install_recommends: no
+    
+# - name: Add 'pi' user to Docker group
+#   user:
+#     name: pi
+#     groups: docker
+#     append: yes
+
+# - name: Make sure Docker is running
+#   systemd:
+#     name: docker.service
+#     enabled: yes
+#     state: started
+
+- name: Pin Docker
+  command: apt-mark hold docker-ce

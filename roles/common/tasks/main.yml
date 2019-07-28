@@ -1,4 +1,10 @@
 ---
+- name: Disable password authentication
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication.+$"
+    line: "PasswordAuthentication no"
+
 - name: Ensure hostname set
   hostname:
     name: "{{ inventory_hostname }}"
@@ -6,30 +12,22 @@
   register: hostname
   tags: hostname
 
-- name: Ensure hostname is in /etc/hosts
+- name: set locale
+  locale_gen: 
+    name: en_US.UTF-8
+    state: present
+
+- name: Add IP address of all hosts to all hosts
   lineinfile:
     dest: /etc/hosts
-    regexp: "^{{ ansible_default_ipv4.address }}.+$"
-    line: "{{ ansible_default_ipv4.address }} {{ ansible_fqdn }} {{ ansible_hostname }}"
-  register: hostname
-  tags: hostname
+    line: "{{ hostvars[item].ansible_host }} {{ hostvars[item].inventory_hostname }} {{ hostvars[item].inventory_hostname_short }}"
+    state: present
+  with_items: "{{ groups.all }}"
 
 - name: set timezone to UTC
   timezone:
     name: UTC
   register: timezone
-
-# - name: gpu mem check
-#   shell: cat /boot/config.txt | grep gpu_mem
-#   changed_when: false
-#   register: gpu_mem_check
-
-# - name: reduce gpu memory
-#   lineinfile:
-#     path: /boot/config.txt
-#     line: gpu_mem=16
-#   register: gpu_mem
-#   when: gpu_mem_check.stdout == ""
 
 - name: Enabling cgroup options at boot
   copy:
@@ -42,6 +40,14 @@
   tags:
     - boot
 
+- name: python-apt dependency
+  shell: apt-get install -y python-apt
+  args:
+    warn: no
+
+- name: apt update
+  command: apt update -y --allow-releaseinfo-change
+
 - name: apt-get update
   apt:
     update_cache: yes
@@ -49,27 +55,22 @@
     autoremove: yes
     cache_valid_time: 86400
 
-- name: apt-get upgrade
-  apt:
-    upgrade: full
+# - name: apt-get upgrade
+#   apt:
+#     upgrade: full
 
-- name: python-apt dependency
-  shell: apt-get install -y python-apt
-  args:
-    warn: no
+- name: Disable unneeded services
+  service:
+    name: "{{item}}"
+    state: stopped
+    enabled: no
+  with_items:
+    - bluetooth
+    - bluealsa
+    - wpa_supplicant
+    - lightdm
 
-- name: Reboot
-  shell: sleep 2 && shutdown -r now "Ansible Reboot"
-  async: 1
-  poll: 0
-  ignore_errors: True
-  when: cmdline or timezone or hostname is changed
 
-- name: Wait for Reboot
-  local_action: wait_for
-  args:
-    host: "{{ inventory_hostname }}"
-    port: 22
-    delay: 15
-    timeout: 120
-  become: False
+- name: Reboot after boot params, hostname, or timezone change
+  reboot:
+  when: cmdline is changed or timezone is changed or hostname is changed

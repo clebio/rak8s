@@ -4,10 +4,19 @@
   shell: kubeadm reset -f
   register: kubeadm_reset
 
-- name: Join Kubernetes Cluster
-  shell: kubeadm join --ignore-preflight-errors=all --token {{ token }} {{ groups['master'][0] }}:6443 --discovery-token-unsafe-skip-ca-verification
-  when: kubeadm_reset is succeeded
-  register: kubeadm_join
+
+- name: Join Kubernetes cluster
+  # command: "{{ hostvars[groups['master'][0]].kubeadm_join_command_generate.stdout }}"
+  command: "{{ kubeadm_join }}"
+
+- name: Reload systemd files on Nodes
+  systemd:
+    daemon_reload: yes
+
+# - name: Join Kubernetes Cluster
+#   shell: kubeadm join --ignore-preflight-errors=all --token {{ token }} {{ groups['master'][0] }}:6443 --discovery-token-unsafe-skip-ca-verification
+#   when: kubeadm_reset is succeeded
+#   register: kubeadm_join
 
 - name: Poke kubelet
   systemd:

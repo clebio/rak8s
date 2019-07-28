@@ -1,13 +1,30 @@
 - hosts: all
+
   roles:
     - common
     - kubeadm
 
+  post_tasks:
+    - name: Remove dependencies that are no longer required
+      apt:
+        autoremove: yes
+
+    - name: Remove useless packages from the cache
+      apt:
+        autoclean: yes
+        
 - hosts: master
   roles:
     - master
 #    - dashboard
 
+  post_tasks:
+    - name: Set join command
+      set_fact: 
+        kubeadm_join: '{{ kubeadm_join_command_generate.stdout }}'
+
+
 - hosts: all:!master
   roles:
     - workers
+    
