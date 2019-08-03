@@ -12,9 +12,16 @@
   register: hostname
   tags: hostname
 
-- name: set locale
+- name: generate locale
   locale_gen: 
     name: en_US.UTF-8
+    state: present
+
+- name: Update locale default
+  lineinfile:
+    dest: /etc/default/locale
+    regex: "^LANG=en_GB.UTF-8$"
+    line: "LANG=en_US.UTF-8"
     state: present
 
 - name: Add IP address of all hosts to all hosts
@@ -55,10 +62,6 @@
     autoremove: yes
     cache_valid_time: 86400
 
-# - name: apt-get upgrade
-#   apt:
-#     upgrade: full
-
 - name: Disable unneeded services
   service:
     name: "{{item}}"
@@ -70,7 +73,27 @@
     - wpa_supplicant
     - lightdm
 
+- name: Turn off swap
+  shell: "{{item}}"
+  with_items:
+    - dphys-swapfile swapoff
+    - dphys-swapfile uninstall
+  ignore_errors: True
+
+- name: Disable swap on boot
+  service: 
+    name: dphys-swapfile
+    state: stopped
+    enabled: no
+  register: swap_disabled
+
+
+- name: Upate iptables 
+  # https://github.com/kubernetes/kubernetes/issues/71305
+  alternatives:
+    name: iptables
+    path: /usr/sbin/iptables-legacy 
 
 - name: Reboot after boot params, hostname, or timezone change
   reboot:
-  when: cmdline is changed or timezone is changed or hostname is changed
+  when: cmdline is changed or timezone is changed or hostname is changed or swap_disabled is changed

@@ -39,19 +39,9 @@
     remote_src: yes
     backup: yes
   when: kubeadm_init
-
-- name: Get join command
-  command: kubeadm token create --print-join-command
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
-  register: kubeadm_join_command_generate
-
-- name: Set join command
-  set_fact: 
-    kubeadm_join: '{{ kubeadm_join_command_generate.stdout }}'
-
+    
 - name: Join Kubernetes Cluster
-  shell: kubeadm join --ignore-preflight-errors=all --token {{ token }} {{ groups['master'][0] }}:6443 --discovery-token-unsafe-skip-ca-verification
+  shell: kubeadm join --ignore-preflight-errors=all --token {{ kubeadm_token }} {{ groups['master'][0] }}:6443 --discovery-token-unsafe-skip-ca-verification
   when: kubeadm_reset is succeeded
   register: kubeadm_join
 
@@ -72,7 +62,7 @@
     replace: 'arm'
 
 - name: Install flannel
-  command: kubectl create -f /tmp/kube-flannel.yml
+  command: kubectl apply -f /tmp/kube-flannel.yml
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
     

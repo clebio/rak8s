@@ -1,15 +1,6 @@
 ---
 # tasks file for kubeadm
 
-# https://gist.github.com/alexellis/fdbc90de7691a1b9edb545c17da2d975
-- name: Disable Swap
-  shell: "{{item}}"
-  with_items:
-    - dphys-swapfile swapoff
-    - dphys-swapfile uninstall
-    - update-rc.d dphys-swapfile remove
-  ignore_errors: True
-
 - include: docker.yml
 
 - name: Pass bridged IPv4 traffic to iptables' chains
@@ -32,13 +23,10 @@
     force: yes
 
 - name: Install GCR key
-  command: apt-key add /tmp/gcr.gpg
+  apt_key:
+    file: /tmp/gcr.gpg
+    state: present
     
-# - name: Add Google Cloud Repo Key
-#   shell: curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-#   args:
-#     warn: no
-
 - name: Add Kubernetes to Available apt Sources
   template:
     src: kubernetes.list
@@ -54,14 +42,3 @@
     state: present
     update_cache: yes
     force: yes
-
-# - name: Install k8s {{ kubernetes_package_version }} Y'all
-#   apt:
-#     name: "{{ item }}={{ kubernetes_package_version }}"
-#     state: present
-#     update_cache: yes
-#     force: yes
-#   with_items:
-#     - kubelet
-#     - kubeadm
-#     - kubectl
