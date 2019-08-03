@@ -25,9 +25,15 @@
         KUBECONFIG: /etc/kubernetes/admin.conf
       register: kubeadm_join_command_generate
 
-    # - name: Show join command
-    #   debug: 
-    #     msg='{{ kubeadm_join_command_generate.stdout }}'
+    - name: Show join command
+      debug: 
+        msg='{{ kubeadm_join_command_generate.stdout }}'
+      when: debugging
+
+    - name: Get Kube config
+      fetch:
+        src: /etc/kubernetes/admin.conf 
+        dest: ./kube.config
 
 - hosts: all:!master
   roles:
@@ -46,7 +52,11 @@
       systemd:
         daemon_reload: yes
 
+
 # $ ansible bramble4 -m fetch -a 'src=/etc/kubernetes/admin.conf dest=./kube.config'
 # $ KUBECONFIG=kube.config/bramble4/etc/kubernetes/admin.conf  kubectl cluster-info
 
 # kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/alternative/kubernetes-dashboard-arm.yaml
+
+# https://github.com/coreos/flannel/issues/883
+# ansible all -m command -a 'ip link delete flannel.1' -b
