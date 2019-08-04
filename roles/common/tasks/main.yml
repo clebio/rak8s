@@ -13,7 +13,7 @@
   tags: hostname
 
 - name: generate locale
-  locale_gen: 
+  locale_gen:
     name: en_US.UTF-8
     state: present
 
@@ -47,10 +47,16 @@
   tags:
     - boot
 
+- name: check for python-apt
+  command: dpkg -l python-apt
+  ignore_errors: true
+  register: python_apt_present
+
 - name: python-apt dependency
   shell: apt-get install -y python-apt
   args:
     warn: no
+  when: python_apt_present.rc != 0
 
 - name: apt update
   command: apt update -y --allow-releaseinfo-change
@@ -61,6 +67,7 @@
     autoclean: yes
     autoremove: yes
     cache_valid_time: 86400
+  when: provisioning
 
 - name: Disable unneeded services
   service:
@@ -81,18 +88,19 @@
   ignore_errors: True
 
 - name: Disable swap on boot
-  service: 
+  service:
     name: dphys-swapfile
     state: stopped
     enabled: no
   register: swap_disabled
 
 
-- name: Upate iptables 
+- name: Upate iptables
   # https://github.com/kubernetes/kubernetes/issues/71305
   alternatives:
     name: iptables
-    path: /usr/sbin/iptables-legacy 
+    path: /usr/sbin/iptables-legacy
+  when: provisioning
 
 - name: Reboot after boot params, hostname, or timezone change
   reboot:

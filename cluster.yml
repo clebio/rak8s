@@ -1,5 +1,17 @@
 - hosts: all
 
+  pre_tasks:
+    - name: Check for kubeadm
+      stat:
+        path: /usr/bin/kubeadm
+      register: kubeadm_exists
+      become: true
+
+    - name: Reset Kubernetes
+      shell: kubeadm reset -f
+      register: kubeadm_reset
+      when: provisioning and kubeadm_exists.exists
+
   roles:
     - common
     - kubeadm
@@ -12,7 +24,7 @@
     - name: Remove useless packages from the cache
       apt:
         autoclean: yes
-        
+
 - hosts: master
   roles:
     - master
@@ -24,16 +36,18 @@
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
       register: kubeadm_join_command_generate
+      when: provisioning
 
     - name: Show join command
-      debug: 
+      debug:
         msg='{{ kubeadm_join_command_generate.stdout }}'
-      when: debugging
+      when: debugging and provisioning
 
     - name: Get Kube config
       fetch:
-        src: /etc/kubernetes/admin.conf 
+        src: /etc/kubernetes/admin.conf
         dest: ./kube.config
+      when: provisioning
 
 - hosts: all:!master
   roles:
@@ -47,16 +61,8 @@
   tasks:
     - name: Join cluster
       command: "{{ hostvars[groups['master'][0]].kubeadm_join_command_generate.stdout }}"
-      
+      when: provisioning
+
     - name: Reload systemd files on Nodes
       systemd:
         daemon_reload: yes
-
-
-# $ ansible bramble4 -m fetch -a 'src=/etc/kubernetes/admin.conf dest=./kube.config'
-# $ KUBECONFIG=kube.config/bramble4/etc/kubernetes/admin.conf  kubectl cluster-info
-
-# kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/alternative/kubernetes-dashboard-arm.yaml
-
-# https://github.com/coreos/flannel/issues/883
-# ansible all -m command -a 'ip link delete flannel.1' -b

@@ -69,6 +69,12 @@ ansible-playbook cluster.yml
 
 # Interact with Kubernetes
 
+
+
+    ansible bramble4 -m fetch -a 'src=/etc/kubernetes/admin.conf dest=./kube.config'
+    export KUBECONFIG=kube.config/bramble4/etc/kubernetes/admin.conf
+    kubectl cluster-info
+
 ## CLI
 
 Test your Kubernetes cluster is up and running:
@@ -91,6 +97,8 @@ pik8s004   Ready     <none>    2d        v1.9.1
 
 ## Dashboard
 
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/alternative/kubernetes-dashboard-arm.yaml
+
 rak8s installs the non-HTTPS version of the Kubernetes dashboard. This is not recommended for production clusters but, it simplifies the setup. Access the dashboard by running:
 
 ```
@@ -102,7 +110,7 @@ Then open a web browser and navigate to:
 
 # Need to Start Over?
 
-Did something go wrong? Nodes fail some process or not joined to the cluster? Break Docker Versions with apt-update? 
+Did something go wrong? Nodes fail some process or not joined to the cluster? Break Docker Versions with apt-update?
 
 Try the process again from the beginning:
 
