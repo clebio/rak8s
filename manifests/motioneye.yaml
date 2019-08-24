@@ -79,11 +79,3 @@ spec:
         - name: motion-data
           persistentVolumeClaim:
             claimName: motioneye-data
-
-# https://github.com/ccrisan/motioneye/blob/dev/extra/Dockerfile.armv7-armhf#L57-L64
-# # R/W needed for motioneye to update configurations
-# VOLUME /etc/motioneye
-# # PIDs
-# VOLUME /var/run/motion
-# # Video & images
-# VOLUME /var/lib/motioneye
