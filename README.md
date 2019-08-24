@@ -63,6 +63,21 @@ Test your Kubernetes cluster is up and running:
 
     kubectl get nodes
 
+## Kubernetes manifests
+
+Once you have a working cluster, there are a few resources I recommend installing:
+
+[MetalLB][metallb] provides a standard LoadBalancer service:
+
+    kubectl apply -f manifests/metallb.yaml -f mainfests/metallb-config.yaml
+
+I use the [NFS client example][nfs-client] to provide persistent volume claims (PVC) via my Synology NAS:
+
+    kubectl apply -f manifests/nfs-client.yaml
+
+[metallb]: https://metallb.universe.tf/
+[nfs-client]: https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client
+
 ## References & Credits
 
 These playbooks were assembled using a handful of very helpful guides:
