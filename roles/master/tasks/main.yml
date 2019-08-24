@@ -1,7 +1,7 @@
 ---
 
 - include: provision.yaml
-  tags: [ never, provision ] 
+  tags: [ never, provision ]
 
 - name: Place Flannel manifests
   template:
@@ -10,7 +10,7 @@
     owner: root
     group: root
     mode: 0644
-  with_items: 
+  with_items:
   - kube-flannel-ds-arm.yaml
   - kube-flannel.yml
 
@@ -30,9 +30,10 @@
   command: "kubectl apply -f /tmp/{{item}}"
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
-  with_items: 
+  with_items:
   - kube-flannel-ds-arm.yaml
   - kube-flannel.yml
+  tags: [ never, provision ]
 
 - name: Poke kubelet
   systemd:
