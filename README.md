@@ -1,14 +1,13 @@
 # Kubernetes on Rasberry Pi
 
-A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisioned via Ansible. Derived from [rak8s][].
+A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisioned via Ansible.
 
 * Thanks to Jeff Geerling for the "bramble" reference.
 
-[rak8s]: https://github.com/rak8s/rak8s
 [bramble]: https://elinux.org/Bramble
 [geerling]: https://www.jeffgeerling.com/project/raspberry-pi-dramble
 
-# Prerequisites
+## Prerequisites
 
 ## Hardware
 
@@ -33,109 +32,44 @@ A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisione
     * If you are going to login to one of the Raspberry Pis to interact with the cluster `kubectl` is installed and configured by default on the master Kubernetes master.
     * If you are administering the cluster from a remote machine (your laptop, desktop, server, bastion host, etc.) `kubectl` will not be installed on the remote machine but it will be configured to interact with the newly built cluster once `kubectl` is installed.
 
-## Recommendations
-
 * Setup SSH key pairs so your password is not required every time Ansible runs
 
-# Stand Up Your Kubernetes Cluster
+## Usage
 
-## Download the latest release or clone the repo:
+Clone the repo
 
-```
-git clone https://github.com/rak8s/rak8s.git
-```
+    git clone git@github.com:clebio/k8s-bramble.git
 
-## Modify ansible.cfg and inventory
+Modify the `inventory` file to suit your environment. Change the names
+to your liking and the IPs to the addresses of your Raspberry Pis. If
+your SSH user on the Raspberry Pis are not the Raspbian default `pi`
+user modify `remote_user` in the `ansible.cfg`.
 
-Modify the `inventory` file to suit your environment. Change the names to your liking and the IPs to the addresses of your Raspberry Pis.
+Confirm Ansible is working with your Raspberry Pis:
 
-If your SSH user on the Raspberry Pis are not the Raspbian default `pi` user modify `remote_user` in the `ansible.cfg`.
+    ansible -m ping all
 
-## Confirm Ansible is working with your Raspberry Pis:
+Configure the cluster:
 
-```
-ansible -m ping all
-```
-This may fail to ping if you have not setup SSH keys and only configured your Pi's with passwords
-## Deploy, Deploy, Deploy
+    ansible-playbook cluster.yml
 
-```
-ansible-playbook cluster.yml
-```
-
-# Interact with Kubernetes
-
-
+Set your kubeconfig (the config file is fetched in `cluster.yml` though):
 
     ansible bramble4 -m fetch -a 'src=/etc/kubernetes/admin.conf dest=./kube.config'
     export KUBECONFIG=kube.config/bramble4/etc/kubernetes/admin.conf
     kubectl cluster-info
 
-## CLI
-
 Test your Kubernetes cluster is up and running:
 
-```
-kubectl get nodes
-```
+    kubectl get nodes
 
-The output should look something like this:
-
-```
-NAME       STATUS    ROLES     AGE       VERSION
-pik8s000   Ready     master    2d        v1.9.1
-pik8s001   Ready     <none>    2d        v1.9.1
-pik8s002   Ready     <none>    2d        v1.9.1
-pik8s003   Ready     <none>    2d        v1.9.1
-pik8s005   Ready     <none>    2d        v1.9.1
-pik8s004   Ready     <none>    2d        v1.9.1
-```
-
-## Dashboard
-
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/alternative/kubernetes-dashboard-arm.yaml
-
-rak8s installs the non-HTTPS version of the Kubernetes dashboard. This is not recommended for production clusters but, it simplifies the setup. Access the dashboard by running:
-
-```
-kubectl proxy
-```
-
-Then open a web browser and navigate to:
-[http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/](http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/)
-
-# Need to Start Over?
-
-Did something go wrong? Nodes fail some process or not joined to the cluster? Break Docker Versions with apt-update?
-
-Try the process again from the beginning:
-
-```
-ansible-playbook cleanup.yml
-```
-Wait for everything to run and then start again with:
-
-```
-ansible-playbook cluster.yml
-```
-
-# Where to Get Help
-
-If you run into any problems please join our welcoming [Discourse](https://discourse.rak8s.io/) community. If you find a bug please open an issue and pull requests are always welcome.
-
-# Etymology
-
-**rak8s** (pronounced rackets - /ˈrækɪts/)
-
-Coined by [Kendrick Coleman](https://github.com/kacole2) on [13 Jan 2018](https://twitter.com/KendrickColeman/status/952242602690129921)
-
-# References & Credits
+## References & Credits
 
 These playbooks were assembled using a handful of very helpful guides:
 
+* This repo is derived from [rak8s](https://github.com/rak8s/rak8s).
 * [K8s on (vanilla) Raspbian Lite](https://gist.github.com/alexellis/fdbc90de7691a1b9edb545c17da2d975) by [Alex Ellis](https://www.alexellis.io/)
 * [Installing kubeadm](https://kubernetes.io/docs/setup/independent/install-kubeadm/)
 * [kubernetes/dashboard - Access control - Admin privileges](https://github.com/kubernetes/dashboard/wiki/Access-control#admin-privileges)
 * [Install using the convenience script](https://docs.docker.com/engine/installation/linux/docker-ce/debian/#install-using-the-convenience-script)
-
-A very special thanks to [**Alex Ellis**](https://www.alexellis.io/) and the [OpenFaaS](https://www.openfaas.com/) community for their assitance in answering questions and making sense of some errors.
+* A very special thanks to [**Alex Ellis**](https://www.alexellis.io/) and the [OpenFaaS](https://www.openfaas.com/) community for their assitance in answering questions and making sense of some errors.
