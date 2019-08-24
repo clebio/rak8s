@@ -1,16 +1,31 @@
 - hosts: all
 
   pre_tasks:
+    - name: Stop k8s services
+      service:
+        name: "{{item}}"
+        state: stopped
+      with_items:
+        - kubelet
+        - docker
+      ignore_errors: true
+      tags: [ never, provision ]
+
     - name: Check for kubeadm
       stat:
         path: /usr/bin/kubeadm
       register: kubeadm_exists
       become: true
 
+    - name: Reset Flannel
+      command: ip link delete flannel.1
+      ignore_errors: true
+      tags: [ never, provision ]
+
     - name: Reset Kubernetes
       shell: kubeadm reset -f
-      register: kubeadm_reset
-      when: provisioning and kubeadm_exists.exists
+      ignore_errors: true
+      tags: [ never, provision ]
 
   roles:
     - common
@@ -36,32 +51,36 @@
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
       register: kubeadm_join_command_generate
-      when: provisioning
+      tags: [ never, provision ]
 
     - name: Show join command
       debug:
         msg='{{ kubeadm_join_command_generate.stdout }}'
-      when: debugging and provisioning
+      tags: [ never, provision ]
 
     - name: Get Kube config
       fetch:
         src: /etc/kubernetes/admin.conf
         dest: ./kube.config
-      when: provisioning
+      tags: [ never, provision ]
 
-- hosts: all:!master
-  roles:
-    - workers
+    - name: Get local copy of admin config
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: ./kube.config
 
 - hosts: all:!master
   gather_facts: no
   become: true
   become_method: sudo
 
+  roles:
+    - workers
+
   tasks:
     - name: Join cluster
       command: "{{ hostvars[groups['master'][0]].kubeadm_join_command_generate.stdout }}"
-      when: provisioning
+      tags: [ never, provision ]
 
     - name: Reload systemd files on Nodes
       systemd:

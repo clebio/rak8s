@@ -12,21 +12,22 @@
   register: hostname
   tags: hostname
 
-- name: generate locale
-  locale_gen:
-    name: en_US.UTF-8
-    state: present
+# - name: generate locale
+#   locale_gen:
+#     name: en_US.UTF-8
+#     state: present
 
-- name: Update locale default
-  lineinfile:
-    dest: /etc/default/locale
-    regex: "^LANG=en_GB.UTF-8$"
-    line: "LANG=en_US.UTF-8"
-    state: present
+# - name: Update locale default
+#   lineinfile:
+#     dest: /etc/default/locale
+#     regex: "^LANG=en_GB.UTF-8$"
+#     line: "LANG=en_US.UTF-8"
+#     state: present
 
 - name: Add IP address of all hosts to all hosts
   lineinfile:
     dest: /etc/hosts
+    regex: "{{ hostvars[item].ansible_host }}.*"
     line: "{{ hostvars[item].ansible_host }} {{ hostvars[item].inventory_hostname }} {{ hostvars[item].inventory_hostname_short }}"
     state: present
   with_items: "{{ groups.all }}"
@@ -67,7 +68,6 @@
     autoclean: yes
     autoremove: yes
     cache_valid_time: 86400
-  when: provisioning
 
 - name: Disable unneeded services
   service:
@@ -76,9 +76,9 @@
     enabled: no
   with_items:
     - bluetooth
-    - bluealsa
     - wpa_supplicant
-    - lightdm
+    # - bluealsa
+    # - lightdm
 
 - name: Turn off swap
   shell: "{{item}}"
@@ -94,14 +94,31 @@
     enabled: no
   register: swap_disabled
 
+- name: Disable HDMI
+  # To conserve power: https://www.jeffgeerling.com/blogs/jeff-geerling/raspberry-pi-zero-conserve-energy
+  lineinfile:
+    dest: /etc/rc.local
+    regex: '.*tvservice.*'
+    line: '/usr/bin/tvservice -o'
 
 - name: Upate iptables
   # https://github.com/kubernetes/kubernetes/issues/71305
   alternatives:
     name: iptables
     path: /usr/sbin/iptables-legacy
-  when: provisioning
 
 - name: Reboot after boot params, hostname, or timezone change
   reboot:
   when: cmdline is changed or timezone is changed or hostname is changed or swap_disabled is changed
+
+- name: Get dpkg arch
+  command: dpkg --print-architecture
+  register: dpkg_arch
+
+- name: Add cri-o repo
+  apt_repository:
+    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/raspbian {{ docker_dist }} {{docker_channel}}
+    filename: docker
+    state: present
+    update_cache: true
+  tags: [ never, cri ]

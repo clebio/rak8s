@@ -1,0 +1,89 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: motioneye-configs
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: motioneye-data
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: motioneye
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  ports:
+  - port: 80
+    targetPort: 8765
+  selector:
+    app: motioneye
+  type: LoadBalancer
+
+---
+# https://support.amcrest.com/hc/en-us/articles/206813947-RTSP-Stream-URLs-for-HD-CVI-DVRs-1080P-HD-CVI-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: motioneye
+  labels:
+    app: motioneye
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: motioneye
+  template:
+    metadata:
+      labels:
+        app: motioneye
+    spec:
+      containers:
+      - name: motioneye
+        image: ccrisan/motioneye:master-armhf
+        ports:
+        - containerPort: 8765
+        livenessProbe:
+          httpGet:
+            port: 8765
+
+        volumeMounts:
+          - name: motion-configs
+            mountPath: "/etc/motioneye"
+          - name: motion-data
+            mountPath: "/var/lib/motioneye"
+      volumes:
+        - name: motion-configs
+          persistentVolumeClaim:
+            claimName: motioneye-configs
+        - name: motion-data
+          persistentVolumeClaim:
+            claimName: motioneye-data
+
+# https://github.com/ccrisan/motioneye/blob/dev/extra/Dockerfile.armv7-armhf#L57-L64
+# # R/W needed for motioneye to update configurations
+# VOLUME /etc/motioneye
+# # PIDs
+# VOLUME /var/run/motion
+# # Video & images
+# VOLUME /var/lib/motioneye

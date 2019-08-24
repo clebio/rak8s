@@ -1,7 +1,7 @@
 ---
 - include: docker.yml
 
-- name: Pass bridged IPv4 traffic to iptables' chains
+- name: Pass bridged IPv4 traffic to iptables chains
   sysctl:
     name: net.bridge.bridge-nf-call-iptables
     value: 1
@@ -31,8 +31,13 @@
     group: root
     mode: 0644
 
+# - name: Configure cgroup driver
+#   lineinfile:
+#     dest: /etc/default/kubelet
+#     line: KUBELET_EXTRA_ARGS=--cgroup-driver=systemd
+#     #line: KUBELET_EXTRA_ARGS=--feature-gates="AllAlpha=false,RunAsGroup=true" --container-runtime=remote --cgroup-driver=systemd --container-runtime-endpoint='unix:///var/run/crio/crio.sock' --runtime-request-timeout=5m
 
-- name: Install k8s Y'all
+- name: Install k8s, y\'all
   apt:
     name: ["kubelet={{ kubernetes_version }}-00", "kubeadm={{ kubernetes_version }}-00", "kubectl={{ kubernetes_version }}-00"]
     state: present

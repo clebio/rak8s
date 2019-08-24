@@ -1,22 +1,18 @@
-# rak8s (pronounced rackets - /ˈrækɪts/)
+# Kubernetes on Rasberry Pi
 
-Stand up a Raspberry Pi based Kubernetes cluster with Ansible
+A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisioned via Ansible. Derived from [rak8s][].
 
-## Why?
+* Thanks to Jeff Geerling for the "bramble" reference.
 
-* Raspberry Pis are rad
-* Ansible is awesome
-* Kubernetes is keen
-
-ARM is going to be the datacenter and home computing platform of the future. It makes a lot of sense to start getting used to working in its unique environment.
-
-Also, it's cheaper than a year of GKE. Plus, why not run Kubernetes in your home?
+[rak8s]: https://github.com/rak8s/rak8s
+[bramble]: https://elinux.org/Bramble
+[geerling]: https://www.jeffgeerling.com/project/raspberry-pi-dramble
 
 # Prerequisites
 
 ## Hardware
 
-* Raspberry Pi 3 (3 or more)
+* Raspberry Pi 3 or 4 (3 or more)
 * Class 10 SD Cards
 * Network connection (wireless or wired) with access to the internet
 

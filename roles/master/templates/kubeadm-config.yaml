@@ -1,0 +1,13 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: v{{ kubernetes_version }}
+controlPlaneEndpoint: "{{ ansible_host }}:6443"
+networking:
+  podSubnet: "{{ podnet }}"
+---
+apiVersion: kubeadm.k8s.io/v1beta1
+kind: InitConfiguration
+bootstrapTokens:
+ - token: "{{ kubeadm_token }}"
+localAPIEndpoint:
+  advertiseAddress: "{{ ansible_host }}"

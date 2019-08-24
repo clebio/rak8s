@@ -1,8 +1,38 @@
 ---
 
 - include: provision.yaml
-  when: provisioning
+  tags: [ never, provision ] 
 
+- name: Place Flannel manifests
+  template:
+    src: "{{item}}"
+    dest: "/tmp/{{item}}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items: 
+  - kube-flannel-ds-arm.yaml
+  - kube-flannel.yml
+
+# - name: Download flannel
+#   get_url:
+#     url: https://rawgit.com/coreos/flannel/{{ flannel_version }}/Documentation/kube-flannel.yml
+#     dest: /tmp/kube-flannel.yml
+#     force: yes
+
+# - name: Fix flannel
+#   replace:
+#     path: /tmp/kube-flannel.yml
+#     regexp: 'amd64'
+#     replace: 'arm'
+
+- name: Install flannel
+  command: "kubectl apply -f /tmp/{{item}}"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  with_items: 
+  - kube-flannel-ds-arm.yaml
+  - kube-flannel.yml
 
 - name: Poke kubelet
   systemd:

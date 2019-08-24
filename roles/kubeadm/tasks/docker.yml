@@ -19,12 +19,19 @@
 
 - name: Install Docker
   apt:
-    name: ["docker-ce={{ docker_ce_version }}", containerd.io=1.2.6-3]
+    name: ["docker-ce={{ docker_ce_version }}", "containerd.io={{containerd_version}}"]
     state: present
     update_cache: true
+
     # https://github.com/docker/for-linux/issues/709
     install_recommends: no
   register: docker_install
+
+- name: Ensure docker is running
+  service:
+    name: docker
+    state: started
+    enabled: yes
 
 - name: Can docker run alpine
   command: docker run --rm -d --name can_haz alpine date
