@@ -2,36 +2,31 @@
 
 A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisioned via Ansible.
 
-* Thanks to Jeff Geerling for the "bramble" reference.
-
-[bramble]: https://elinux.org/Bramble
-[geerling]: https://www.jeffgeerling.com/project/raspberry-pi-dramble
+![Meatspace cluster](bramble.jpg)
 
 ## Prerequisites
 
-## Hardware
+### Hardware
 
-* Raspberry Pi 3 or 4 (3 or more)
+* Three or more Raspberry Pi 3 or 4
+  * For the master node(s), I strongly recommend a Pi with at least 2GB RAM
 * Class 10 SD Cards
-* Network connection (wireless or wired) with access to the internet
+* [Power](https://www.amazon.com/gp/product/B00P936188), [space](https://www.amazon.com/gp/product/B07MW24S61) and cooling
+* Network switch and short ethernet cables
+* Network connection
 
-## Software
+### Software
 
-* [Raspbian Lite](https://www.raspberrypi.org/downloads/raspbian/) (installed on each Raspberry Pi)
-
+* [Raspbian](https://www.raspberrypi.org/downloads/raspbian/) (installed on each Raspberry Pi)
 * Raspberry Pis should have static IPs
     * Requirement for Kubernetes and Ansible inventory
     * You can set these via OS configuration or DHCP reservations (your choice)
-
 * Ability to SSH into all Raspberry Pis and escalate privileges with sudo
     * The pi user is fine just change its password
-
 * [Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html) 2.2 or higher
-
 * [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/) should be available on the system you intend to use to interact with the Kubernetes cluster.
     * If you are going to login to one of the Raspberry Pis to interact with the cluster `kubectl` is installed and configured by default on the master Kubernetes master.
     * If you are administering the cluster from a remote machine (your laptop, desktop, server, bastion host, etc.) `kubectl` will not be installed on the remote machine but it will be configured to interact with the newly built cluster once `kubectl` is installed.
-
 * Setup SSH key pairs so your password is not required every time Ansible runs
 
 ## Usage
@@ -63,6 +58,10 @@ Test your Kubernetes cluster is up and running:
 
     kubectl get nodes
 
+To power the whole thing down,
+
+    ansible all -m command -a shutdown
+
 ## Kubernetes manifests
 
 Once you have a working cluster, there are a few resources I recommend installing:
@@ -75,16 +74,19 @@ I use the [NFS client example][nfs-client] to provide persistent volume claims (
 
     kubectl apply -f manifests/nfs-client.yaml
 
-[metallb]: https://metallb.universe.tf/
-[nfs-client]: https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client
-
 ## References & Credits
 
 These playbooks were assembled using a handful of very helpful guides:
 
+* Thanks to [Jeff Geerling for the "bramble" reference][geerling].
 * This repo is derived from [rak8s](https://github.com/rak8s/rak8s).
 * [K8s on (vanilla) Raspbian Lite](https://gist.github.com/alexellis/fdbc90de7691a1b9edb545c17da2d975) by [Alex Ellis](https://www.alexellis.io/)
 * [Installing kubeadm](https://kubernetes.io/docs/setup/independent/install-kubeadm/)
 * [kubernetes/dashboard - Access control - Admin privileges](https://github.com/kubernetes/dashboard/wiki/Access-control#admin-privileges)
 * [Install using the convenience script](https://docs.docker.com/engine/installation/linux/docker-ce/debian/#install-using-the-convenience-script)
 * A very special thanks to [**Alex Ellis**](https://www.alexellis.io/) and the [OpenFaaS](https://www.openfaas.com/) community for their assitance in answering questions and making sense of some errors.
+
+[bramble]: https://elinux.org/Bramble
+[geerling]: https://www.jeffgeerling.com/project/raspberry-pi-dramble
+[metallb]: https://metallb.universe.tf/
+[nfs-client]: https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client
