@@ -1,0 +1,161 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+- stat:
+    path: "{{ consul_install_path }}/{{ consul_version }}/"
+  register: preexisting
+  tags:
+    - consul
+
+# - debug: var=preexisting
+
+- block:
+
+  - name: download consul
+    get_url:
+      url: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_linux_arm.zip"
+      dest: /tmp/consul.zip
+      mode: 0777
+      checksum: "{{ consul_checksum }}"
+    tags:
+      - consul
+
+  - name: create the install paths
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0755
+    with_items:
+      - "{{ consul_install_path }}/{{ consul_version }}"
+      - /usr/share/consul-ui
+      - /etc/consul
+    tags:
+      - consul
+
+  - name: decompress archive
+    command: "unzip /tmp/consul.zip -d {{ consul_install_path }}/{{ consul_version }}/"
+    tags:
+      - consul
+
+  - name: link the versioned consul to the local bin
+    file:
+      src: "{{ consul_install_path }}/{{ consul_version }}/consul"
+      dest: /usr/local/bin/consul
+      owner: root
+      group: root
+      state: link
+    tags:
+      - consul
+
+  - name: get consul-ui
+    get_url:
+      url: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_web_ui.zip"
+      dest: /tmp/consul_web_ui.zip
+    tags:
+      - consul
+
+  - name: extract consul-ui
+    unarchive:
+      src: /tmp/consul_web_ui.zip
+      dest: /usr/share/consul-ui
+      copy: no
+      creates: /usr/share/consul-ui/index.html
+    tags:
+      - consul
+
+  - name: remove the temp archives
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /tmp/consul.zip
+      - /tmp/consul_web_ui.zip
+    tags:
+      - consul
+
+  become: true
+  become_user: root
+  when: preexisting.stat.exists != true
+
+###############################################################################
+################################ CONFIGURE ####################################
+###############################################################################
+
+- block:
+  # - name: deploy tls files
+  #   copy:
+  #     src: "{{ item.src }}"
+  #     dest: "{{ item.dest }}"
+  #   with_items:
+  #     - src: etc/consul/ssl/cacert.pem
+  #       dest: /etc/consul/ssl/{{ consul_ca_file }}
+  #     - src: etc/consul/ssl/certs/consul.cert.pem
+  #       dest: /etc/consul/ssl/{{ consul_cert_file }}
+  #     - src: etc/consul/ssl/private/consul.key.pem
+  #       dest: /etc/consul/ssl/{{ consul_key_file }}
+  #   when: consul_do_ssl
+  #   notify:
+  #     - restart consul
+  #   tags:
+  #     - consul
+
+  - name: install consul scripts
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: u=rwx,g=rx,o=rx
+    with_items:
+      - src: consul-wait-for-leader.sh
+        dest: /usr/local/bin
+      - src: consul-destroy-install.sh
+        dest: /usr/local/bin
+    tags:
+      - consul
+
+  - name: configure for systemd
+    copy:
+      src: consul.service
+      dest: "{{ systemd_dir }}/consul.service"
+      mode: 644
+    notify:
+      - reload systemd
+    tags:
+      - consul
+
+  - name: configure consul
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: u=rw,g=r,o=r
+    with_items:
+      - src: consul.json.j2
+        dest: /etc/consul/consul.json
+    tags:
+      - consul
+
+  - name: enable consul
+    service:
+      name: consul
+      enabled: yes
+      state: started
+    tags:
+      - consul
+
+  become: yes
+  become_user: root
+
+- pause:
+    seconds: 3
+
+- name: join cluster of consul-dcs
+  command: "/usr/local/bin/consul join {{ groups['consul'] | random }}"
+  run_once: yes
+  tags:
+    - consul
+
+- name: wait for leader
+  command: /usr/local/bin/consul-wait-for-leader.sh
+  register: leader_status
+  tags:
+    - consul

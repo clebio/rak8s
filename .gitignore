@@ -2,3 +2,5 @@
 .cache/*
 .cp/*
 kube.config/
+.DS_Store
+vault.keys

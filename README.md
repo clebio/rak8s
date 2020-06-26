@@ -90,3 +90,84 @@ These playbooks were assembled using a handful of very helpful guides:
 [geerling]: https://www.jeffgeerling.com/project/raspberry-pi-dramble
 [metallb]: https://metallb.universe.tf/
 [nfs-client]: https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client
+
+# Nomad
+
+Everything in thie repository related to the Hashistack is a fork of [Timothy Perrett's hashpi repo][haspi]. I've merged that entire repo into this one via `--allow-unrelated-histories`. The following is borrowed from that repo's readme.
+
+[haspi]: https://github.com/timperrett/hashpi
+
+These instructions assume you are running *Raspbian Lite*, Jesse or later (this requires [systemd](https://www.freedesktop.org/wiki/Software/systemd/)). You can download [Raspbian Lite from here](https://www.raspberrypi.org/downloads/raspbian/), and I would strongly recomend checking out resin.io [Ether](https://etcher.io/) for a quick and convenient way to flash your SD cards from OSX, with the vanilla Raspbian image you are downloading.
+
+There is a set of initial setup that must be done manually to get the Pi's accessible remotely (and availalbe for automatic provisioning). I used the following steps to get the nodes going:
+
+```
+# set a new root password
+$ sudo passwd root
+<enter new password>
+
+# set your the password for the `pi` user
+$ sudo passwd pi
+<enter new password>
+
+$ sudo reboot
+
+# update the system, disable avahi and bluetooth
+$ sudo systemctl enable ssh && \
+  sudo systemctl start ssh
+
+# optionally install a few useful utilities
+$ sudo apt-get install -y htop
+
+```
+
+Now we have our four Pi's running SSH and have disabled the features we wont be using in this cluster build out (e.g. bluetooth). Now we are ready to deploy the bulk of the software! This repo makes use of [Ansible](https://www.ansible.com/) as its provisioning system; in order to automate the vast majority of operations we conduct on the cluster. This makes them repeatable and testable. Please checkout the Ansible documentation if you are not familiar with the tool.
+
+#### Bootstrap Playbook
+
+The bootstrap playbook setups up core functionality so that we can run more complicated playbooks on the Pis themselves, and also get access to the cluster nodes without having to SSH with an explicit username and password (add your key to the `user` roles `vars` file). After first turning on the cluster and enabling SSH, the following should be executed in the root of the repository:
+
+```
+./bootstrap.yml
+```
+
+This mainly kills avahai-daemon and several other processes we will not be needing, going forward.
+
+#### Site Playbook
+
+Once you've bootstrapped your cluster and you can SSH into the nodes with your key, then we can simply run the ansible site plays, and let it install all the nessicary gubbins.
+
+```
+./site.yml
+```
+
+Any other time you update the cluster using the `site.yml` playbook, be sure to run with the following option:
+
+```
+./site.yml --skip-tags=consul-servers,bootstrap
+```
+
+This will ensure that the consul servers used to corrdinate everything don't get screwed up during the deployment of new software.
+
+This set of playbooks installs the following software (in order).
+
++ Debugging Utils (htop, nslookup, telnet etc)
++ [Consul](https://www.consul.io/) (runs on 3 nodes as a quorum)
++ [Vault](https://www.vaultproject.io/) (uses Consul as its secure backend; runs on rpi01)
++ [Nomad](https://www.nomadproject.io/) (only rpi01 has the `server` component of Nomad installed)
++ [Prometheus](https://prometheus.io) (only runs on rpi01)
++ [Grafana](http://grafana.org/)
++ [Docker](https://docker.com/)
+
+Whilst the setup is vastly automated, there are a few manual steps. When first installing Vault, there is a set of keys that are generated which cannot be automated away, because they are required for vault initialization. The steps to first setup the vault are [documented in this blog post](https://www.vaultproject.io/intro/getting-started/deploy.html) but the TL;DR is:
+
+```
+$ ssh pi@<baron-ip>
+$ export VAULT_ADDR="http://`ip -4 route get 8.8.8.8 | awk '{print $7}' | xargs echo -n`:8200"
+$ vault init
+
+# be sure to keep the generated keys in a safe place, and absolutely do not check them in anywhere!
+
+$ vault -tls-skip-verify unseal
+
+```

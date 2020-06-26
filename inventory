@@ -1,5 +1,5 @@
 [dev]
-bramble0    ansible_host=172.16.11.200
+#bramble0    ansible_host=172.16.11.200
 bramble1    ansible_host=172.16.11.201
 bramble2    ansible_host=172.16.11.202
 bramble4    ansible_host=172.16.11.204
