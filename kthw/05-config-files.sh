@@ -2,7 +2,7 @@
 # set -x
 CLUSTER_NAME=bramble
 KUBERNETES_PUBLIC_ADDRESS="127.0.0.1"
-nodes="bramble4 bramble5 bramble6"
+nodes="bramble4 bramble5 bramble6 bramble7"
 controllers="bramble4"
 
 CA_PATH=../certs
@@ -42,6 +42,7 @@ create_kube_config() {
 
 for node in $nodes; do
 	create_kube_config system $node "https://${KUBERNETES_PUBLIC_ADDRESS}:6443"
+	# create_kube_config system $node "https://${node}:6443"
 done
 
 create_kube_config system kube-proxy "https://${KUBERNETES_PUBLIC_ADDRESS}:6443"
@@ -49,16 +50,16 @@ create_kube_config system kube-controller-manager "https://127.0.0.1:6443"
 create_kube_config system kube-scheduler "https://127.0.0.1:6443"
 create_kube_config admin admin "https://127.0.0.1:6443"
 
-for node in $nodes; do
-  echo "Install kubeconfig on $node"
-  # scp ${node}.kubeconfig kube-proxy.kubeconfig ${node}:~/
-done
+# Moved to Ansible playbook:
+# for node in $nodes; do
+#   echo "Install kubeconfig on $node"
+#   # scp ${node}.kubeconfig kube-proxy.kubeconfig ${node}:~/
+# done
 
 
-for node in $controllers; do
-	echo "Install kubeconfig on $node"
-	# scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${node}:~/
-done
-
+# for node in $controllers; do
+# 	echo "Install kubeconfig on $node"
+# 	# scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${node}:~/
+# done
 
 popd

@@ -20,29 +20,22 @@ pushd ${WORKDIR}
 certificate_authority
 admin_client_certificate admin
 controller_manager_certificate
-proxy_client_certificate
+proxy_client_certificate	
 scheduler_client_certificate
 
 
 # for node in $nodes; do NODE_IPS=$NODE_IPS:${node["ip"]}; done
-api_server_certificate $EXTERNAL_IP ${NODE_IPS}
+NODE_IPS=172.16.11.204,172.16.11.205,172.16.11.206,172.16.11.207
+api_server_certificate $EXTERNAL_IP $NODE_IPS,$(echo $nodes |  tr ' ' ',')
 
 service_account_keypair
 
 for node in $nodes
 do
 	kubelet_client_certificates $node
-	# scp ca.pem ${instance}-key.pem ${instance}.pem ${node}:~/
-	# ssh ${node} bash -c "mv ${node}:ca.crt  /usr/local/share/ca-certificates/kubernetes.crt"
-	# ssh ${node} bash -c 'sudo update-ca-certificates'
 done
 
-for instance in $controllers
-do
-	echo $instance
-	# scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
-	#   service-account-key.pem service-account.pem ${instance}:~/
-done
+
 
 
 popd

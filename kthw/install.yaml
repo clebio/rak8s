@@ -1,0 +1,182 @@
+- hosts: all
+  tasks:
+
+    - name: Ensure hostname set
+      hostname:
+        name: "{{ inventory_hostname }}"
+      when: not inventory_hostname is match('(\d{1,3}\.){3}\d{1,3}')
+      register: hostname
+      tags: hostname
+
+    - name: Add IP address of all hosts to all hosts
+      lineinfile:
+        dest: /etc/hosts
+        regex: "{{ hostvars[item].ansible_host }}.*"
+        line: "{{ hostvars[item].ansible_host }} {{ hostvars[item].inventory_hostname }} {{ hostvars[item].inventory_hostname_short }}"
+        state: present
+      with_items: "{{ groups.all }}"
+
+    - name: Make k8s directory
+      file: 
+        path: /var/lib/kubernetes
+        state: directory
+        mode: '0755'
+        recurse: yes
+
+    - name: Install certificate files
+      copy:
+        src: "certs/{{item}}"
+        dest: "/var/lib/kubernetes/{{item}}"
+      with_items:
+        - "{{ inventory_hostname }}-key.pem"
+        - "{{ inventory_hostname }}.pem"
+        - ca.pem
+
+    - name: Reboot after boot params, hostname, or timezone change
+      reboot:
+      when: hostname is changed
+
+- hosts: master
+  become: true
+  vars:
+    arch: arm
+    k8s_version: v1.15.3
+    service_cidr: 10.32.0.0/24
+    cluster_cidr: 10.200.0.0/16
+
+  tasks:
+    - name: Install k8s certs
+      copy:
+        src: "certs/{{item}}"
+        dest: "/var/lib/kubernetes/{{item}}"
+        mode: '0600'
+      with_items:
+        - ca-key.pem
+        - kubernetes-key.pem
+        - kubernetes.pem
+        - service-account-key.pem
+        - service-account.pem
+
+    - name: Install encryption config
+      copy:
+        src: "encryption-config.yaml"
+        dest: "/var/lib/kubernetes/encryption-config.yaml"
+
+    - name: Install kubeconfigs
+      copy:
+        src: "kubeconfigs/{{item}}"
+        dest: "/var/lib/kubernetes/{{item}}"
+      with_items:
+        - admin.kubeconfig 
+        - kube-controller-manager.kubeconfig 
+        - kube-scheduler.kubeconfig
+
+    - set_fact:
+        controller_endpoints: "{% for host in groups['master'] %}{{host}}=https://{{hostvars[host]['ansible_facts']['eth0']['ipv4']['address']}}:2380,{% endfor %}"
+        etcd_servers: "{% for host in groups['master'] %}https://{{hostvars[host]['ansible_facts']['eth0']['ipv4']['address']}}:2379,{% endfor %}"
+    
+    - name: Install services
+      template:
+        src: "{{item}}"
+        dest: "/etc/systemd/system/{{item}}"
+      with_items:
+        - kube-controller-manager.service
+        - kube-apiserver.service
+        - kube-scheduler.service
+        - etcd.service
+
+    - name: Install etcd
+      apt:
+        name: ['etcd-client', 'etcd-server']
+        state: present
+ 
+    - name: start etcd
+      systemd:
+        name: etcd
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+        
+    - name: Verify etcd
+      command: ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/kubernetes/ca.pem --cert=/var/lib/kubernetes/ca.pem --key=/var/lib/kubernetes/ca-key.pem
+
+    - name: Make k8s etc directory
+      file: 
+        path: /etc/kubernetes/config
+        state: directory
+        mode: '0755'
+        recurse: yes
+
+    - name: Install scheduler manifest
+      template:
+        src: kube-scheduler.yaml
+        dest: /etc/kubernetes/config/kube-scheduler.yaml
+
+    - name: install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: nginx server_names_hash_bucket_size
+      lineinfile:
+        dest: /etc/nginx/nginx.conf
+        regex: "	# server_names_hash_bucket_size.*"
+        line: "	server_names_hash_bucket_size 64;"
+        state: present
+      with_items: "{{ groups.all }}"
+
+    - name: install nginx healthcheck site
+      template:
+        src: k8s-healthcheck.local
+        dest: /etc/nginx/sites-available/k8s-healthcheck.local
+
+    - name: symlink nginx site
+      file:
+        src: /etc/nginx/sites-available/k8s-healthcheck.local 
+        dest: /etc/nginx/sites-enabled/k8s-healthcheck.local 
+        state: link
+
+    - name: start nginx
+      systemd:
+        name: nginx
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+
+    - name: verify nginx healthcheck
+      command: 'curl -H "Host: k8s-healthcheck.local" -i http://127.0.0.1/healthz'
+
+    - name: Download Kubernetes binaries
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/{{k8s_version}}/bin/linux/{{arch}}/{{item}}"
+        dest: "/usr/local/bin/{{item}}"
+        mode: '0775'
+      with_items:
+        - "kube-apiserver"
+        - "kube-controller-manager"
+        - "kube-scheduler"
+        - "kubectl"
+
+    - name: start kubernetes services
+      systemd:
+        name: "{{item}}"
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+      with_items: 
+        - kube-apiserver
+        - kube-controller-manager 
+        - kube-scheduler
+    
+    - name: Wait for k8s to come online
+      pause:
+        seconds: 30
+
+    - name: Verification of k8s systems
+      command: "{{item}}"
+      with_items:
+        - kubectl get componentstatuses
+        - curl --cacert /var/lib/kubernetes/ca.pem https://{{ ansible_hostname }}:6443/version
+
+  # TODO: continue at 
+  # https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md#rbac-for-kubelet-authorization
