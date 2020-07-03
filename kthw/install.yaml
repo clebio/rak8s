@@ -30,7 +30,17 @@
       with_items:
         - "{{ inventory_hostname }}-key.pem"
         - "{{ inventory_hostname }}.pem"
-        - ca.pem
+
+    - name: Install self-signed PKI CA (certificate authority)
+      copy:
+        src: "certs/ca.pem"
+        dest: "{{item}}"
+      with_items:
+        - /var/lib/kubernetes/ca.pem
+        - /usr/local/share/ca-certificates/kubernetes.crt
+
+    - name: Update CA list
+      command: update-ca-certificates
 
     - name: Reboot after boot params, hostname, or timezone change
       reboot:
@@ -49,7 +59,7 @@
       copy:
         src: "certs/{{item}}"
         dest: "/var/lib/kubernetes/{{item}}"
-        mode: '0600'
+        mode: '0755'
       with_items:
         - ca-key.pem
         - kubernetes-key.pem
@@ -61,6 +71,7 @@
       copy:
         src: "encryption-config.yaml"
         dest: "/var/lib/kubernetes/encryption-config.yaml"
+        mode: '0755'
 
     - name: Install kubeconfigs
       copy:
@@ -93,12 +104,14 @@
     - name: start etcd
       systemd:
         name: etcd
-        state: restarted
+        state: started
         daemon_reload: yes
         enabled: yes
         
     - name: Verify etcd
-      command: ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/kubernetes/ca.pem --cert=/var/lib/kubernetes/ca.pem --key=/var/lib/kubernetes/ca-key.pem
+      command: etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/kubernetes/ca.pem --cert=/var/lib/kubernetes/ca.pem --key=/var/lib/kubernetes/ca-key.pem
+      environment:
+        ETCDCTL_API: 3 
 
     - name: Make k8s etc directory
       file: 
@@ -139,7 +152,7 @@
     - name: start nginx
       systemd:
         name: nginx
-        state: restarted
+        state: started
         daemon_reload: yes
         enabled: yes
 
@@ -160,7 +173,7 @@
     - name: start kubernetes services
       systemd:
         name: "{{item}}"
-        state: restarted
+        state: started
         daemon_reload: yes
         enabled: yes
       with_items: 
@@ -180,3 +193,77 @@
 
   # TODO: continue at 
   # https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md#rbac-for-kubelet-authorization
+
+    - name: install binding manifest
+      template:
+        src: apiserver-to-kubelet.yaml
+        dest: /tmp/apiserver-to-kubelet.yaml
+
+    - name: bind API server to kubelets
+      command: kubectl apply -f /tmp/apiserver-to-kubelet.yaml
+
+- hosts: all:!master
+  become: true
+  # https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/09-bootstrapping-kubernetes-workers.md
+
+  tasks:
+    - name: Install OS packages
+      apt:
+        name: ['socat', 'conntrack', 'ipset']
+        state: present
+
+    - name: Turn off swap
+      shell: "{{item}}"
+      with_items:
+        - dphys-swapfile swapoff
+        - dphys-swapfile uninstall
+      ignore_errors: True
+
+    - name: Disable swap on boot
+      service:
+        name: dphys-swapfile
+        state: stopped
+        enabled: no
+      register: swap_disabled      
+
+
+    - name: Make k8s directory
+      file: 
+        path: "{{item}}"
+        state: directory
+        mode: '0755'
+        recurse: yes
+      with_items:
+        - /etc/cni/net.d
+        - /opt/cni/bin
+        - /var/lib/kubelet
+        - /var/lib/kube-proxy
+        - /var/lib/kubernetes
+        - /var/run/kubernetes
+
+    - name: Download Kubernetes binaries
+      get_url:
+        url: "{{item.value}}"
+        dest: "/tmp/{{item.key}}"
+        mode: '0775'
+      with_dict:
+        crictl: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.15.0/crictl-v1.15.0-linux-amd64.tar.gz"
+        runc: "https://github.com/opencontainers/runc/releases/download/v1.0.0-rc8/runc.amd64"
+        cni-plugins: "https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
+        containerd: "https://github.com/containerd/containerd/releases/download/v1.2.9/containerd-1.2.9.linux-amd64.tar.gz"
+        kubectl: "https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kubectl"
+        kube-proxy: "https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kube-proxy"
+        kubelet: "https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kubelet"
+
+    - name: Sort these binaries
+      command: "{{item}}"
+      with_items:
+        - tar -xvf /tmp/crictl
+        - tar -xvf /tmp/containerd -C containerd
+        - tar -xvf /tmp/cni-plugins -C /opt/cni/bin/
+        - mv /tmp/runc.amd64 runc
+        - mv /tmp/crictl /tmp/kubectl /tmp/kube-proxy /tmp/kubelet /tmp/runc /usr/local/bin/
+        - mv /tmp/containerd/bin/* /bin/
+
+  # Continue:
+  # https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/09-bootstrapping-kubernetes-workers.md#configure-cni-networking

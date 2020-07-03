@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# set -x
+set -x
 CLUSTER_NAME=bramble
 KUBERNETES_PUBLIC_ADDRESS="127.0.0.1"
 nodes="bramble4 bramble5 bramble6 bramble7"

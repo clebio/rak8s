@@ -4,6 +4,18 @@ clean() {
 	rm -r ${WORKDIR}/
 }
 
+gen_cert() {
+	PREFIX=$1
+	ADD=$2
+	echo ">>>>${PREFIX} [$ADD]<<<<"
+		cfssl gencert \
+			-ca=${CA_PREFIX}.pem \
+			-ca-key=${CA_PREFIX}-key.pem \
+			-config=${CONFIG_FILE} \
+			-profile=kubernetes ${ADD} \
+			${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
+}
+
 certificate_authority() {
 	if [[ -e ${CA_FILE} ]]; then return; fi
 
@@ -71,21 +83,13 @@ admin_client_certificate() {
 		]
 	}
 	EOF
-
-	cfssl gencert \
-		-ca=${CA_PREFIX}.pem \
-		-ca-key=${CA_PREFIX}-key.pem \
-		-config=${CONFIG_FILE} \
-		-profile=kubernetes \
-		${SERVER_FILE} | cfssljson -bare ${OUT_PREFIX}
+ 	gen_cert $PREFIX ""
 }
 
 kubelet_client_certificates() {
 	# https://kubernetes.io/docs/reference/access-authn-authz/node/
 	node=$1
 	if [[ -e "${node}-key.pem" ]]; then return; fi
-
-	echo ">> Creating client certificate for ${node}"
 
 	envsubst > ${node}-csr.json <<-EOF
 		{
@@ -105,14 +109,7 @@ kubelet_client_certificates() {
 		]
 		}
 	EOF
-
-	cfssl gencert \
-		-ca=${CA_PREFIX}.pem \
-		-ca-key=${CA_PREFIX}-key.pem \
-		-config=${CONFIG_FILE} \
-		-hostname=${node},${EXTERNAL_IP} \
-		-profile=kubernetes \
-		${node}-csr.json | cfssljson -bare ${node}
+ 	gen_cert $node "-hostname=${node},${EXTERNAL_IP}"
 
 }
 
@@ -138,13 +135,7 @@ controller_manager_certificate() {
 		}
 	EOF
 
-		cfssl gencert \
-			-ca=${CA_PREFIX}.pem \
-			-ca-key=${CA_PREFIX}-key.pem \
-			-config=${CONFIG_FILE} \
-			-profile=kubernetes \
-			${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
-
+	gen_cert $PREFIX ""
 }
 
 proxy_client_certificate() {
@@ -170,14 +161,8 @@ proxy_client_certificate() {
 		}
 		EOF
 
-		cfssl gencert \
-			-ca=${CA_PREFIX}.pem \
-			-ca-key=${CA_PREFIX}-key.pem \
-			-config=${CONFIG_FILE} \
-			-profile=kubernetes \
-			${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
-
-	}
+	gen_cert $PREFIX ""
+}
 
 scheduler_client_certificate() {
 	PREFIX=kube-scheduler
@@ -200,14 +185,9 @@ scheduler_client_certificate() {
 				}
 			]
 		}
-		EOF
+	EOF
 
-		cfssl gencert \
-			-ca=${CA_PREFIX}.pem \
-			-ca-key=${CA_PREFIX}-key.pem \
-			-config=${CONFIG_FILE} \
-			-profile=kubernetes \
-			${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
+	gen_cert $PREFIX ""
 }
 
 api_server_certificate () {
@@ -236,14 +216,7 @@ api_server_certificate () {
 	EOF
 
 	ALL_HOSTNAMES=${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES},${ADDITIONAL_HOSTNAMES}
-
-	cfssl gencert \
-		-ca=${CA_PREFIX}.pem \
-		-ca-key=${CA_PREFIX}-key.pem \
-		-config=${CONFIG_FILE} \
-		-hostname=${ALL_HOSTNAMES} \
-		-profile=kubernetes \
-		${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
+ 	gen_cert $PREFIX "-hostname=${ALL_HOSTNAMES}"
 }
 
 service_account_keypair() {
@@ -266,11 +239,5 @@ service_account_keypair() {
 		]
 	}
 	EOF
-
-	cfssl gencert \
-		-ca=${CA_PREFIX}.pem \
-		-ca-key=${CA_PREFIX}-key.pem \
-		-config=${CONFIG_FILE} \
-		-profile=kubernetes \
-		${PREFIX}-csr.json | cfssljson -bare ${PREFIX}
+ 	gen_cert $PREFIX ""
 }

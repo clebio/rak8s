@@ -10,3 +10,7 @@ if [[ ! "${RESET}x" -eq 'x' ]]; then rm certs/* kubeconfigs/*; fi
 pushd ..
 ansible-playbook kthw/install.yaml
 popd
+for i in 0 1 2; do
+  POD_CIDR=10.200.${i}.0/24
+done
+

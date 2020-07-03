@@ -18,7 +18,7 @@ pushd ${WORKDIR}
 
 
 certificate_authority
-admin_client_certificate admin
+PREFIX=admin admin_client_certificate 
 controller_manager_certificate
 proxy_client_certificate	
 scheduler_client_certificate
