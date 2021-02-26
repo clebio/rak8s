@@ -4,6 +4,10 @@ A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisione
 
 ![Meatspace cluster](bramble.jpg)
 
+## Questions?
+
+Did I leave anything out, or is anything unclear? Please let me know! [Open an issue](https://github.com/clebio/k8s-bramble/issues). There's a lot of bit involved in getting this working, and it's possible -- _likely_ even -- that I forgot to document something.
+
 ## Prerequisites
 
 ### SSH access
