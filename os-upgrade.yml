@@ -1,0 +1,26 @@
+- hosts: all
+  serial: 1
+
+  tasks:
+    - name: apt-get update
+      apt:
+        update_cache: yes
+        autoclean: yes
+        autoremove: yes
+
+    - name: apt full-upgrade
+      apt:
+        upgrade: full
+      register: apt_upgrade
+
+    - name: Enable ARMv8
+      template:
+        src: config.txt
+        dest: /boot/config.txt
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Reboot after upgrade
+      reboot:
+      when: apt_upgrade is changed

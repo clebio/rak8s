@@ -1,8 +1,30 @@
-[dev]
-bramble0    ansible_host=172.16.11.200
-bramble1    ansible_host=172.16.11.201
-bramble2    ansible_host=172.16.11.202
+[pi3]
+#bramble0    ansible_host=172.16.11.200
+#bramble1    ansible_host=172.16.11.201
+#bramble2    ansible_host=172.16.11.202
+
+[pi4]
 bramble4    ansible_host=172.16.11.204
+bramble5    ansible_host=172.16.11.205
+bramble6    ansible_host=172.16.11.206
+bramble7    ansible_host=172.16.11.207
 
 [master]
 bramble4
+
+[bramble]
+bramble4    ansible_host=172.16.11.204
+bramble5    ansible_host=172.16.11.205
+bramble6    ansible_host=172.16.11.206
+bramble7    ansible_host=172.16.11.207
+
+[consul]
+bramble4    ansible_host=172.16.11.204
+
+[baron]
+bramble4    ansible_host=172.16.11.204
+
+[followers]
+bramble5    ansible_host=172.16.11.205
+bramble6    ansible_host=172.16.11.206
+bramble7    ansible_host=172.16.11.207

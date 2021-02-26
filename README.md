@@ -117,6 +117,13 @@ I use the [NFS client example][nfs-client] to provide persistent volume claims (
     kubectl apply -f example-manifests/kubernetes-dashboard-arm.yaml
     kubectl describe secret kubernetes-dashboard-token-8qksk -n kubernetes-dashboard
 
+
+## Diagnostics
+
+Raspberry Pi aren't terribly large machines. You might run out of resources. One quick and dirty check:
+
+     ansible -i inventory all -m shell -a 'cat /proc/meminfo | grep -i memfree'
+
 ## References & Credits
 
 These playbooks were assembled using a handful of very helpful guides:
