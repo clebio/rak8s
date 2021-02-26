@@ -1,12 +1,12 @@
 podnet: 10.244.0.0/16
 
-kubernetes_version: "1.15.2"
+kubernetes_version: 1.20.2
 
 docker_dist: buster
 docker_channel: stable
-docker_ce_version: "5:19.03.1~3-0~raspbian-buster"
+docker_ce_version: "5:20.10.3~3-0~debian-buster"
 # Available versions: apt-cache policy docker-ce
 # docker_ce_version: "18.06.2~ce~3-0~raspbian"
 
-containerd_version: 1.2.6-3
+containerio_version: 1.4.3-1
 flannel_version: "master"

@@ -9,4 +9,10 @@ data:
     - name: default
       protocol: layer2
       addresses:
-      - 172.16.11.220-172.16.11.240
+      - 172.16.11.224-172.16.11.239
+
+    - name: certified
+      protocol: layer2
+      addresses:
+      - 172.16.11.240/32
+      auto-assign: false

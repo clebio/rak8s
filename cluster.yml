@@ -1,15 +1,6 @@
 - hosts: all
 
   pre_tasks:
-    - name: Stop k8s services
-      service:
-        name: "{{item}}"
-        state: stopped
-      with_items:
-        - kubelet
-        - docker
-      ignore_errors: true
-      tags: [ never, provision ]
 
     - name: Check for kubeadm
       stat:
@@ -64,11 +55,6 @@
         dest: ./kube.config
       tags: [ never, provision ]
 
-    - name: Get local copy of admin config
-      fetch:
-        src: /etc/kubernetes/admin.conf
-        dest: ./kube.config
-
 - hosts: all:!master
   gather_facts: no
   become: true
@@ -78,6 +64,17 @@
     - workers
 
   tasks:
+    - name: Start k8s services
+      service:
+        name: "{{item}}"
+        state: restarted
+        enabled: yes
+      with_items:
+        - kubelet
+        - docker
+        - containerd
+      tags: [ provision ]
+
     - name: Join cluster
       command: "{{ hostvars[groups['master'][0]].kubeadm_join_command_generate.stdout }}"
       tags: [ never, provision ]

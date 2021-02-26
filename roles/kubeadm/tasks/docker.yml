@@ -7,19 +7,26 @@
   command: dpkg --print-architecture
   register: dpkg_arch
 
+- apt:
+    update_cache: true
+
 - name: Add Docker repo
   apt_repository:
-    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/raspbian {{ docker_dist }} {{docker_channel}}
+    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/debian {{ docker_dist }} {{docker_channel}}
     filename: docker
     state: present
-    update_cache: true
 
 - name: Unpin Docker
   command: apt-mark unhold docker-ce
+  failed_when: false
 
 - name: Install Docker
   apt:
-    name: ["docker-ce={{ docker_ce_version }}", "containerd.io={{containerd_version}}"]
+    name:
+      [
+        "docker-ce={{ docker_ce_version }}",
+        "containerd.io={{containerio_version}}",
+      ]
     state: present
     update_cache: true
 
@@ -52,3 +59,10 @@
 
 - name: Pin Docker
   command: apt-mark hold docker-ce
+
+- name: Enable Docker service
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

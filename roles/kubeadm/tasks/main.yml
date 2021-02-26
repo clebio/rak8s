@@ -1,4 +1,16 @@
----
+
+- name: Get dpkg arch
+  command: dpkg --print-architecture
+  register: dpkg_arch
+
+- name: Add cri-o repo
+  apt_repository:
+    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/debian {{ docker_dist }} {{docker_channel}}
+    filename: docker
+    state: present
+    update_cache: true
+  tags: [ never, cri ]
+
 - include: docker.yml
 
 - name: Pass bridged IPv4 traffic to iptables chains
@@ -37,7 +49,7 @@
 #     line: KUBELET_EXTRA_ARGS=--cgroup-driver=systemd
 #     #line: KUBELET_EXTRA_ARGS=--feature-gates="AllAlpha=false,RunAsGroup=true" --container-runtime=remote --cgroup-driver=systemd --container-runtime-endpoint='unix:///var/run/crio/crio.sock' --runtime-request-timeout=5m
 
-- name: Install k8s, y\'all
+- name: Install k8s, y'all
   apt:
     name: ["kubelet={{ kubernetes_version }}-00", "kubeadm={{ kubernetes_version }}-00", "kubectl={{ kubernetes_version }}-00"]
     state: present

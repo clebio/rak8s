@@ -110,15 +110,3 @@
 - name: Reboot after boot params, hostname, or timezone change
   reboot:
   when: cmdline is changed or timezone is changed or hostname is changed or swap_disabled is changed
-
-- name: Get dpkg arch
-  command: dpkg --print-architecture
-  register: dpkg_arch
-
-- name: Add cri-o repo
-  apt_repository:
-    repo: deb [arch={{dpkg_arch.stdout}}] https://download.docker.com/linux/raspbian {{ docker_dist }} {{docker_channel}}
-    filename: docker
-    state: present
-    update_cache: true
-  tags: [ never, cri ]

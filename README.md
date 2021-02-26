@@ -6,14 +6,19 @@ A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisione
 
 ## Prerequisites
 
+### SSH access
+
+    touch /Volumes/boot/ssh
+    PW=`cat ~/.network.pw` envsubst < ~/dev/raspberrypi/wpa_supplicant.conf > /Volumes/boot/wpa_supplicant.conf
+
 ### Hardware
 
 * Three or more Raspberry Pi 3 or 4
   * For the master node(s), I strongly recommend a Pi with at least 2GB RAM
 * Class 10 SD Cards
-* [Power](https://www.amazon.com/gp/product/B00P936188), [space](https://www.amazon.com/gp/product/B07MW24S61) and cooling
-* Network switch and short ethernet cables
-* Network connection
+* [Power](https://www.amazon.com/gp/product/B00P936188), [space](https://www.amazon.com/gp/product/B07MW24S61) and [cooling](https://www.amazon.com/gp/product/B0792BW2VH/)
+* [Network switch](https://www.amazon.com/gp/product/B00A128S24/) and short ethernet cables
+* Internet
 
 ### Software
 
@@ -28,6 +33,16 @@ A cluster of Raspberry Pis (a [bramble][]*) running Kubernetes (k8s), provisione
     * If you are going to login to one of the Raspberry Pis to interact with the cluster `kubectl` is installed and configured by default on the master Kubernetes master.
     * If you are administering the cluster from a remote machine (your laptop, desktop, server, bastion host, etc.) `kubectl` will not be installed on the remote machine but it will be configured to interact with the newly built cluster once `kubectl` is installed.
 * Setup SSH key pairs so your password is not required every time Ansible runs
+
+### iptables
+
+> The iptables tooling can act as a compatibility layer, behaving like iptables but actually configuring nftables. This nftables backend is not compatible with the current kubeadm packages: it causes duplicated firewall rules and breaks kube-proxy.
+
+[Ensure iptables tooling does not use the nftables backend][kubeadm-iptables]
+
+[kubeadm-iptables]: https://v1-16.docs.kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#check-network-adapters
+
+    ansible-playbook iptables.yml
 
 ## Usage
 
@@ -47,6 +62,7 @@ Confirm Ansible is working with your Raspberry Pis:
 Configure the cluster:
 
     ansible-playbook cluster.yml
+    ansible-playbook cluster.yml --tags provision
 
 Set your kubeconfig (the config file is fetched in `cluster.yml` though):
 
@@ -66,13 +82,40 @@ To power the whole thing down,
 
 Once you have a working cluster, there are a few resources I recommend installing:
 
+### Ingress
+
+* [Nginx Ingress controller on Bare Metal](https://kubernetes.github.io/ingress-nginx/deploy/baremetal/#a-pure-software-solution-metallb)
+
 [MetalLB][metallb] provides a standard LoadBalancer service:
 
-    kubectl apply -f manifests/metallb.yaml -f mainfests/metallb-config.yaml
+    kubectl apply -f manifests/metallb.yaml 
+	kubectl apply -f manifests/metallb-config.yaml
+
+In that MetalLB config, we defined a `certified` pool of size `/32` so that we can map that in our home router's NAT (external to this Bramble setup). If we then annotate the Nginx ingress configuration's LoadBalancer accordingly, we can create a predictable entrypoint to our private, NAT'd cluster.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: certified
+spec:
+  type: LoadBalancer
+  # ...
+```
+
+    kubectl apply -f manifests/nginx-ingress-cloud.yaml
+    
+### NFS for PVCs
 
 I use the [NFS client example][nfs-client] to provide persistent volume claims (PVC) via my Synology NAS:
 
-    kubectl apply -f manifests/nfs-client.yaml
+    kubectl apply -f manifests/nfs-client-provisioner.yaml
+
+### Dashboard
+
+    kubectl apply -f example-manifests/kubernetes-dashboard-arm.yaml
+    kubectl describe secret kubernetes-dashboard-token-8qksk -n kubernetes-dashboard
 
 ## References & Credits
 

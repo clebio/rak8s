@@ -1,0 +1,10 @@
+- hosts: all
+
+  tasks:
+    - name: Use legacy iptables and friends
+      command: update-alternatives --set {{item}} /usr/sbin/{{item}}-legacy
+      with_items:
+        - iptables
+        - ip6tables
+        - arptables
+        - ebtables

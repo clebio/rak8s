@@ -1,7 +1,6 @@
 ---
-
 - include: provision.yaml
-  tags: [ never, provision ]
+  tags: [never, provision]
 
 - name: Place Flannel manifests
   template:
@@ -11,8 +10,8 @@
     group: root
     mode: 0644
   with_items:
-  - kube-flannel-ds-arm.yaml
-  - kube-flannel.yml
+    - kube-flannel-ds-arm.yaml
+    - kube-flannel.yml
 
 # - name: Download flannel
 #   get_url:
@@ -31,9 +30,8 @@
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
   with_items:
-  - kube-flannel-ds-arm.yaml
-  - kube-flannel.yml
-  tags: [ never, provision ]
+    - kube-flannel.yml
+  tags: [never, provision]
 
 - name: Poke kubelet
   systemd:

@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app: swag
+  name: linuxserver
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: linuxserver
+  name: swag
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+  selector:
+    app: swag
+  type: LoadBalancer
+
+# ---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#     name: swag-cfg
+# data: []
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  namespace: linuxserver
+  name: swag-configs
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: linuxserver
+  name: swag
+  labels:
+    app: swag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swag
+  template:
+    metadata:
+      labels:
+        app: swag
+    spec:
+      containers:
+        - name: swag
+          image: ghcr.io/linuxserver/swag:arm64v8-latest
+          env:
+            - name: TZ
+              value: US/Pacific
+            - name: URL
+              value: yolo.duckdns.org
+            - name: SUBDOMAINS
+              value: wildcard
+            - name: VALIDATION
+              value: duckdns
+            - name: DUCKDNSTOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: duckdns
+                  key: token
+            - name: LOG_FILE
+              value: "false"
+
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+
+          # securityContext:
+          #   capabilities:
+          #     add:
+          #       - NET_ADMIN
+
+          resources:
+            requests:
+              memory: "1Mi"
+              cpu: "250m"
+
+          volumeMounts:
+            - name: swag-configs
+              mountPath: "/config"
+      volumes:
+        - name: swag-configs
+          persistentVolumeClaim:
+            claimName: swag-configs
+          # hostNetwork: true
+#   --net=lsio \
+#   -v /home/aptalca/appdata/swag:/config
