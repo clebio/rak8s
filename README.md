@@ -87,7 +87,6 @@ To power the whole thing down,
 Once you have a working cluster, deploy system manifests into the cluster:
 
 ```sh
-kubectl apply -f system-manifests/letsencrypt-issuers.yaml
 kubectl apply -f system-manifests/metallb.yaml
 kubectl apply -f system-manifests/metallb-config.yaml
 kubectl apply -f system-manifests/nfs-client-provisioner.yaml

@@ -2,3 +2,4 @@
 .cache/*
 .cp/*
 kube.config/
+letsencrypt-issuers.yaml
