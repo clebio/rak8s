@@ -10,8 +10,8 @@
     group: root
     mode: 0644
   with_items:
-    - kube-flannel-ds-arm.yaml
     - kube-flannel.yml
+  tags: [provision]
 
 # - name: Download flannel
 #   get_url:

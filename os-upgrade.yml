@@ -14,7 +14,7 @@
       register: apt_upgrade
 
     - name: Enable ARMv8
-      template:
+      template: # lineinfile with_items: [arm_64bit=1,  arm_control=0x200]
         src: config.txt
         dest: /boot/config.txt
         owner: root

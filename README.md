@@ -84,7 +84,19 @@ To power the whole thing down,
 
 ## Kubernetes manifests
 
-Once you have a working cluster, there are a few resources I recommend installing:
+Once you have a working cluster, deploy system manifests into the cluster:
+
+```sh
+kubectl apply -f system-manifests/letsencrypt-issuers.yaml
+kubectl apply -f system-manifests/metallb.yaml
+kubectl apply -f system-manifests/metallb-config.yaml
+kubectl apply -f system-manifests/nfs-client-provisioner.yaml
+kubectl apply -f system-manifests/cert-manager.yaml
+kubectl apply -f system-manifests/letsencrypt-issuers.yaml
+kubectl apply -f system-manifests/nginx-ingress-cloud.yaml
+```
+
+Overall, there are a few resources I recommend installing:
 
 ### Ingress
 
