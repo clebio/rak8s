@@ -3,3 +3,4 @@
 .cp/*
 kube.config/
 letsencrypt-issuers.yaml
+kube.config/*
